@@ -1,5 +1,6 @@
 import random
 from game import Game, Move, Player
+import numpy as np
 
 
 class RandomPlayer(Player):
@@ -23,7 +24,8 @@ class MyPlayer(Player):
 
 
 if __name__ == '__main__':
-    g = Game()
+    winned_state = np.ones((5, 5), dtype=np.uint8)
+    g = Game(winned_state)
     g.print()
     player1 = MyPlayer()
     player2 = RandomPlayer()

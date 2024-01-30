@@ -34,8 +34,8 @@ class Player(ABC):
 
 
 class Game(object):
-    def __init__(self) -> None:
-        self._board = np.ones((5, 5), dtype=np.uint8) * -1
+    def __init__(self, state) -> None:
+        self._board = state
         self.current_player_idx = 1
 
     def get_board(self) -> np.ndarray:
@@ -95,11 +95,11 @@ class Game(object):
             while not ok:
                 from_pos, slide = players[self.current_player_idx].make_move(
                     self)
-                ok = self.__move(from_pos, slide, self.current_player_idx)
+                ok = self.move(from_pos, slide, self.current_player_idx)
             winner = self.check_winner()
         return winner
 
-    def __move(self, from_pos: tuple[int, int], slide: Move, player_id: int) -> bool:
+    def move(self, from_pos: tuple[int, int], slide: Move, player_id: int) -> bool:
         '''Perform a move'''
         if player_id > 2:
             return False
@@ -110,6 +110,7 @@ class Game(object):
             acceptable = self.__slide((from_pos[1], from_pos[0]), slide)
             if not acceptable:
                 self._board[(from_pos[1], from_pos[0])] = deepcopy(prev_value)
+                print(self._board)
         return acceptable
 
     def __take(self, from_pos: tuple[int, int], player_id: int) -> bool:
