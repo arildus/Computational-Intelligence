@@ -54,41 +54,56 @@ class Game(object):
         '''Prints the board. -1 are neutral pieces, 0 are pieces of player 0, 1 pieces of player 1'''
         print(self._board)
 
-    def check_winner(self) -> int:
+    def check_winner(self, board: np.ndarray) -> int:
         '''Check the winner. Returns the player ID of the winner if any, otherwise returns -1'''
         # for each row
-        for x in range(self._board.shape[0]):
+        for x in range(board.shape[0]):
             # if a player has completed an entire row
-            if self._board[x, 0] != -1 and all(self._board[x, :] == self._board[x, 0]):
+            if board[x, 0] != -1 and all(board[x, :] == board[x, 0]):
                 # return the relative id
-                return self._board[x, 0]
+                return board[x, 0]
         # for each column
-        for y in range(self._board.shape[1]):
+        for y in range(board.shape[1]):
             # if a player has completed an entire column
-            if self._board[0, y] != -1 and all(self._board[:, y] == self._board[0, y]):
+            if board[0, y] != -1 and all(board[:, y] == board[0, y]):
                 # return the relative id
-                return self._board[0, y]
+                return board[0, y]
         # if a player has completed the principal diagonal
-        if self._board[0, 0] != -1 and all(
-            [self._board[x, x]
-                for x in range(self._board.shape[0])] == self._board[0, 0]
+        if board[0, 0] != -1 and all(
+            [board[x, x]
+                for x in range(board.shape[0])] == board[0, 0]
         ):
             # return the relative id
-            return self._board[0, 0]
+            return board[0, 0]
         # if a player has completed the secondary diagonal
-        if self._board[0, -1] != -1 and all(
-            [self._board[x, -(x + 1)]
-             for x in range(self._board.shape[0])] == self._board[0, -1]
+        if board[0, -1] != -1 and all(
+            [board[x, -(x + 1)]
+             for x in range(board.shape[0])] == board[0, -1]
         ):
             # return the relative id
-            return self._board[0, -1]
+            return board[0, -1]
         return -1
+    
+    def check_if_winning_move(self, from_pos: tuple[int, int], slide: Move, player_id: int) -> bool:
+        '''Perform a move'''
+        if player_id > 2:
+            return False
+        # Oh God, Numpy arrays
+        board = deepcopy(self._board)
+        prev_value = deepcopy(board[(from_pos[1], from_pos[0])])
+        acceptable = self.__take((from_pos[1], from_pos[0]), player_id, board)
+        if acceptable:
+            acceptable = self.__slide((from_pos[1], from_pos[0]), slide, board)
+            if not acceptable:
+                board[(from_pos[1], from_pos[0])] = deepcopy(prev_value)
+                #print(self._board)
+        winning_move = self.check_winner(board)
+        return winning_move == player_id
 
     def play(self, player1: Player, player2: Player, print_num_turns=False) -> int:
         '''Play the game. Returns the winning player'''
         players = [player1, player2]
         winner = -1
-        num_turns = 0
         while winner < 0:
             self.current_player_idx += 1
             self.current_player_idx %= len(players)
@@ -97,10 +112,7 @@ class Game(object):
                 from_pos, slide = players[self.current_player_idx].make_move(
                     self)
                 ok = self.move(from_pos, slide, self.current_player_idx)
-            winner = self.check_winner()
-            num_turns+=1
-            #if print_num_turns:
-                #print(num_turns)
+            winner = self.check_winner(self._board)
         return winner
 
     def move(self, from_pos: tuple[int, int], slide: Move, player_id: int) -> bool:
@@ -109,15 +121,15 @@ class Game(object):
             return False
         # Oh God, Numpy arrays
         prev_value = deepcopy(self._board[(from_pos[1], from_pos[0])])
-        acceptable = self.__take((from_pos[1], from_pos[0]), player_id)
+        acceptable = self.__take((from_pos[1], from_pos[0]), player_id, self._board)
         if acceptable:
-            acceptable = self.__slide((from_pos[1], from_pos[0]), slide)
+            acceptable = self.__slide((from_pos[1], from_pos[0]), slide, self._board)
             if not acceptable:
                 self._board[(from_pos[1], from_pos[0])] = deepcopy(prev_value)
                 #print(self._board)
         return acceptable
 
-    def __take(self, from_pos: tuple[int, int], player_id: int) -> bool:
+    def __take(self, from_pos: tuple[int, int], player_id: int, board: np.ndarray) -> bool:
         '''Take piece'''
         # acceptable only if in border
         acceptable: bool = (
@@ -130,12 +142,12 @@ class Game(object):
             # check if it is in the last column
             or (from_pos[1] == 4 and from_pos[0] < 5)
             # and check if the piece can be moved by the current player
-        ) and (self._board[from_pos] < 0 or self._board[from_pos] == player_id)
+        ) and (board[from_pos] < 0 or board[from_pos] == player_id)
         if acceptable:
-            self._board[from_pos] = player_id
+            board[from_pos] = player_id
         return acceptable
 
-    def __slide(self, from_pos: tuple[int, int], slide: Move) -> bool:
+    def __slide(self, from_pos: tuple[int, int], slide: Move, board: np.ndarray) -> bool:
         '''Slide the other pieces'''
         # define the corners
         SIDES = [(0, 0), (0, 4), (4, 0), (4, 4)]
@@ -176,41 +188,41 @@ class Game(object):
         # if it is
         if acceptable:
             # take the piece
-            piece = self._board[from_pos]
+            piece = board[from_pos]
             # if the player wants to slide it to the left
             if slide == Move.LEFT:
                 # for each column starting from the column of the piece and moving to the left
                 for i in range(from_pos[1], 0, -1):
                     # copy the value contained in the same row and the previous column
-                    self._board[(from_pos[0], i)] = self._board[(
+                    board[(from_pos[0], i)] = board[(
                         from_pos[0], i - 1)]
                 # move the piece to the left
-                self._board[(from_pos[0], 0)] = piece
+                board[(from_pos[0], 0)] = piece
             # if the player wants to slide it to the right
             elif slide == Move.RIGHT:
                 # for each column starting from the column of the piece and moving to the right
-                for i in range(from_pos[1], self._board.shape[1] - 1, 1):
+                for i in range(from_pos[1], board.shape[1] - 1, 1):
                     # copy the value contained in the same row and the following column
-                    self._board[(from_pos[0], i)] = self._board[(
+                    board[(from_pos[0], i)] = board[(
                         from_pos[0], i + 1)]
                 # move the piece to the right
-                self._board[(from_pos[0], self._board.shape[1] - 1)] = piece
+                board[(from_pos[0], board.shape[1] - 1)] = piece
             # if the player wants to slide it upward
             elif slide == Move.TOP:
                 # for each row starting from the row of the piece and going upward
                 for i in range(from_pos[0], 0, -1):
                     # copy the value contained in the same column and the previous row
-                    self._board[(i, from_pos[1])] = self._board[(
+                    board[(i, from_pos[1])] = board[(
                         i - 1, from_pos[1])]
                 # move the piece up
-                self._board[(0, from_pos[1])] = piece
+                board[(0, from_pos[1])] = piece
             # if the player wants to slide it downward
             elif slide == Move.BOTTOM:
                 # for each row starting from the row of the piece and going downward
-                for i in range(from_pos[0], self._board.shape[0] - 1, 1):
+                for i in range(from_pos[0], board.shape[0] - 1, 1):
                     # copy the value contained in the same column and the following row
-                    self._board[(i, from_pos[1])] = self._board[(
+                    board[(i, from_pos[1])] = board[(
                         i + 1, from_pos[1])]
                 # move the piece down
-                self._board[(self._board.shape[0] - 1, from_pos[1])] = piece
+                board[(board.shape[0] - 1, from_pos[1])] = piece
         return acceptable
