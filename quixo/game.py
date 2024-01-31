@@ -50,7 +50,7 @@ class Game(object):
         '''
         return deepcopy(self.current_player_idx)
 
-    def print(self):
+    def print_board(self):
         '''Prints the board. -1 are neutral pieces, 0 are pieces of player 0, 1 pieces of player 1'''
         print(self._board)
 
@@ -84,10 +84,11 @@ class Game(object):
             return self._board[0, -1]
         return -1
 
-    def play(self, player1: Player, player2: Player) -> int:
+    def play(self, player1: Player, player2: Player, print_num_turns=False) -> int:
         '''Play the game. Returns the winning player'''
         players = [player1, player2]
         winner = -1
+        num_turns = 0
         while winner < 0:
             self.current_player_idx += 1
             self.current_player_idx %= len(players)
@@ -97,6 +98,9 @@ class Game(object):
                     self)
                 ok = self.move(from_pos, slide, self.current_player_idx)
             winner = self.check_winner()
+            num_turns+=1
+            #if print_num_turns:
+                #print(num_turns)
         return winner
 
     def move(self, from_pos: tuple[int, int], slide: Move, player_id: int) -> bool:
@@ -110,7 +114,7 @@ class Game(object):
             acceptable = self.__slide((from_pos[1], from_pos[0]), slide)
             if not acceptable:
                 self._board[(from_pos[1], from_pos[0])] = deepcopy(prev_value)
-                print(self._board)
+                #print(self._board)
         return acceptable
 
     def __take(self, from_pos: tuple[int, int], player_id: int) -> bool:
